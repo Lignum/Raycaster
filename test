@@ -1,0 +1,29 @@
+os.unloadAPI(shell.resolve("ray"))
+os.loadAPI(shell.resolve("ray"))
+
+term.clear()
+term.setCursorPos(1, 1)
+
+
+ray.init(shell)
+
+local Raycaster = ray.newRaycaster(1, 1)
+Raycaster:loadFromFile(shell.resolve("testMap"))
+Raycaster:setCameraTransform(3, 5, 0)
+Raycaster:draw3D(term)
+
+while true do
+	local e, key = os.pullEvent("key")
+	term.setBackgroundColour(colours.black)
+	term.clear()
+	term.setCursorPos(1, 1)
+	
+	local x, y, angle = Raycaster:getCameraTransform()
+	if key == keys.right then
+		Raycaster:setCameraTransform(x, y, angle + 5)
+	elseif key == keys.left then
+		Raycaster:setCameraTransform(x, y, angle - 5)
+	end
+
+	Raycaster:draw3D(term)
+end

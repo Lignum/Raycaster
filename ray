@@ -1,0 +1,13 @@
+local Raycaster = nil
+
+function init(shell)
+	os.unloadAPI(shell.resolve("apis/oohelper")) --# Just to make sure...
+	os.loadAPI(shell.resolve("apis/oohelper"))
+
+	Raycaster = assert(loadfile(shell.resolve("raycaster.lua")), "failed to load raycaster.lua")()
+end
+
+function newRaycaster(...)
+	assert(Raycaster, "you need to call ray.init(shell)")
+	return Raycaster(...)
+end

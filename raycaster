@@ -1,4 +1,0 @@
-os.unloadAPI(shell.resolve("apis/oohelper")) --# Just to make sure...
-os.loadAPI(shell.resolve("apis/oohelper"))
-
-Raycaster = assert(loadfile("raycaster.lua"))()

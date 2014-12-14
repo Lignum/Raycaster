@@ -1,13 +1,246 @@
-local Raycaster = nil
+local BASE_16 = "0123456789abcdef"
 
-function init(shell)
-	os.unloadAPI(shell.resolve("apis/oohelper")) --# Just to make sure...
-	os.loadAPI(shell.resolve("apis/oohelper"))
-
-	Raycaster = assert(loadfile(shell.resolve("raycaster.lua")), "failed to load raycaster.lua")()
+--# Linearly interpolates x and y by t.
+local function lerp(x, y, t)
+	return (1 - t) * x + t * y
 end
 
+--# Calculates c from a and b.
+local function hypot(a, b)
+	--# c^2=a^2+b^2
+	--# c=sqrt(a^2+b^2)
+	return math.sqrt(a^2+b^2)
+end
+
+local Raycaster = {
+	new = function(self, mapWidth, mapHeight)
+		self:clearTiles()
+
+		self.width = mapWidth
+		self.height = mapHeight
+
+		self.cameraX = 0
+		self.cameraY = 0
+		self.cameraAngle = 0
+		self.cameraFov = 60
+
+		self.wallHeight = 1
+
+		self.skyColour = colours.black
+
+		for y=1,mapHeight do
+			self.tiles[y] = {}
+			for x=1,mapWidth do
+				self.tiles[y][x] = 0
+			end
+		end
+	end,
+
+	setCameraTransform = function(self, x, y, angle)
+		self.cameraX = x
+		self.cameraY = y
+		self.cameraAngle = angle
+	end,
+
+	setCameraFOV = function(self, fov)
+		self.cameraFov = fov
+	end,
+
+	getCameraTransform = function(self)
+		return self.cameraX, self.cameraY, self.cameraAngle
+	end,
+
+	setWallHeight = function(self, newHeight)
+		self.wallHeight = newHeight
+	end,
+
+	getWallHeight = function(self)
+		return self.wallHeight
+	end,
+
+	setSkyColour = function(self, colour)
+		self.skyColour = colour
+	end,
+
+	getSkyColour = function(self)
+		return self.skyColour
+	end,
+
+	setSkyColor = setSkyColour,
+	getSkyColor = getSkyColour,
+
+	setTile = function(self, x, y, tile)
+		self.tiles[y][x] = tile
+	end,
+
+	getTile = function(self, x, y)
+		assert(x and y)
+
+		x = math.floor(x)
+		y = math.floor(y)
+
+		if x > self.width or y > self.height or x < 1 or y < 1 then
+			return 0
+		end
+
+		return self.tiles[y][x]
+	end,
+
+	clearTiles = function(self)
+		self.tiles = {}
+	end,
+
+	loadFromFile = function(self, file)
+		local f = assert(fs.open(file, "r"), "failed to open file " .. file)
+
+		self:clearTiles()
+
+		local line = f.readLine()
+		local y = 1
+		while line ~= nil do
+			--# Create a new row at the current position.
+			self.tiles[y] = {}
+
+			for x=1,#line do --# For every character in the line...
+				local c = line:sub(x, x) --# Gets the current character.
+				local i = BASE_16:find(c) --# Convert hex to decimal.
+				if i ~= nil then
+					self.tiles[y][x] = i --# Insert the tile into the row.
+				else
+					self.tiles[y][x] = 0 --# If i is nil, there is no tile.
+				end
+			end
+
+			self.width = #line
+
+			y = y + 1
+			line = f.readLine()
+		end
+
+		self.height = y - 1
+
+		f.close()
+	end,
+
+	getWidth = function(self)
+		return self.width
+	end,
+
+	getHeight = function(self)
+		return self.height
+	end,
+
+	getSize = function(self)
+		return self.width,self.height
+	end,
+
+	--# Casts a ray from a specified position at an angle with a specified maximum length.
+	--# Returns the tile it hit aswell as the distance the ray travelled.
+	castRay = function(self, angle, length)
+		local x = self.cameraX
+		local y = self.cameraY
+
+		--# Compute the target position so that we can interpolate to it.
+		local targetX = x + math.cos(math.rad(angle)) * length
+		local targetY = y + math.sin(math.rad(angle)) * length
+
+		--# Calculate the distance between the start and target,
+		--# so that we can get the increase for the for loop.
+		local dist = hypot(targetX - x, targetY - y)
+		local increase = 1/dist
+
+		for t=0,1,increase do
+			--# Get the next position on the line between the start position and target position.
+			local nextX = lerp(x, targetX, t)
+			local nextY = lerp(y, targetY, t)
+
+			local nextTile = self:getTile(nextX, nextY)
+
+			if nextTile ~= nil and nextTile > 0 then --# We've hit a tile.
+				return nextTile, hypot(nextX - x, nextY - y)
+			end
+		end
+
+		return 16, 0
+	end,
+
+	--# For debugging.
+	draw2D = function(self, surface)
+		local surf = surface or term
+		local w,h = surf.getSize()
+
+		for y=1,self.height do
+			for x=1,self.width do
+				local i = self:getTile(x, y)
+
+				if i > 0 then
+					local col = 2 ^ (i - 1)
+					surf.setCursorPos(x, y)
+					surf.setBackgroundColour(col)
+					surf.write(" ")
+				end
+			end
+		end
+
+		for i=1,w do
+			local t = i/w
+			local angle = lerp(self.cameraAngle - self.cameraFov / 2, self.cameraAngle + self.cameraFov / 2, t)
+			surf.setCursorPos(self.cameraX, self.cameraY)
+			surf.setBackgroundColour(colours.blue)
+			surf.write(" ")
+			surf.setCursorPos(self.cameraX + math.floor(math.cos(math.rad(self.cameraAngle)) + 0.5), self.cameraY + math.floor(math.sin(math.rad(self.cameraAngle)) + 0.5))
+			surf.write(" ")
+		end
+	end,
+
+	draw3D = function(self, surface)
+		if self.cameraAngle > 360 then
+			self.cameraAngle = self.cameraAngle - 360
+		elseif self.cameraAngle < 0 then
+			self.cameraAngle = self.cameraAngle + 360
+		end
+
+		local surf = surface or term
+		local w,h = surf.getSize()
+		drawDist = 64
+
+		surf.setBackgroundColour(self.skyColour)
+		surf.clear()
+
+		for i=1,w do
+			local t = i/w
+			local angle = lerp(self.cameraAngle - self.cameraFov / 2, self.cameraAngle + self.cameraFov / 2, t)
+
+			local tile, dist = self:castRay(angle, drawDist)
+			local top, height = self:project(self.wallHeight, h, angle, dist)
+
+			for j=top,top+height do
+				surf.setCursorPos(i, j)
+				surf.setBackgroundColour(2 ^ (tile - 1))
+				surf.write(" ")
+				surf.setCursorPos(1, 1)
+			end
+		end
+	end,
+
+	project = function(self, height, surfHeight, angle, dist)
+		local depth = dist
+		local wallHeight = surfHeight * height / depth
+		local bottom = surfHeight / 2 * (1 + 1 / depth)
+		return bottom - wallHeight, wallHeight
+	end
+}
+
+Raycaster.__index = Raycaster
+
+setmetatable(Raycaster, {
+	__call = function(cls, ...)
+		local self = setmetatable({}, cls)
+		cls.new(self, ...)
+		return self
+	end
+})
+
 function newRaycaster(...)
-	assert(Raycaster, "you need to call ray.init(shell)")
 	return Raycaster(...)
 end

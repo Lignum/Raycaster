@@ -4,13 +4,23 @@ os.loadAPI(shell.resolve("ray"))
 term.clear()
 term.setCursorPos(1, 1)
 
-
-ray.init(shell)
-
 local Raycaster = ray.newRaycaster(1, 1)
 Raycaster:loadFromFile(shell.resolve("testMap"))
+Raycaster:setSkyColour(colours.lightGrey)
+Raycaster:setWallHeight(1.2)
 Raycaster:setCameraTransform(3, 5, 0)
-Raycaster:draw3D(term)
+
+local renderFunc = Raycaster.draw3D
+
+local function toggleView()
+	if renderFunc == Raycaster.draw3D then
+		renderFunc = Raycaster.draw2D
+	else
+		renderFunc = Raycaster.draw3D
+	end
+end
+
+os.queueEvent("key")
 
 while true do
 	local e, key = os.pullEvent("key")
@@ -31,5 +41,9 @@ while true do
 		Raycaster:setCameraTransform(x - math.cos(math.rad(angle)), y - math.sin(math.rad(angle)), angle)
 	end
 
-	Raycaster:draw3D(term)
+	if key == keys.space then
+		toggleView()
+	end
+
+	renderFunc(Raycaster, term)
 end

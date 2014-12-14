@@ -36,9 +36,17 @@ while true do
 	end
 
 	if key == keys.up then
-		Raycaster:setCameraTransform(x + math.cos(math.rad(angle)), y + math.sin(math.rad(angle)), angle)
+		local nextX, nextY = x + math.cos(math.rad(angle)), y + math.sin(math.rad(angle))
+
+		if Raycaster:getTile(nextX, nextY) == 0 then
+			Raycaster:setCameraTransform(nextX, nextY, angle)
+		end
 	elseif key == keys.down then
-		Raycaster:setCameraTransform(x - math.cos(math.rad(angle)), y - math.sin(math.rad(angle)), angle)
+		local nextX, nextY = x - math.cos(math.rad(angle)), y - math.sin(math.rad(angle))
+
+		if Raycaster:getTile(nextX, nextY) == 0 then
+			Raycaster:setCameraTransform(nextX, nextY, angle)
+		end
 	end
 
 	if key == keys.space then

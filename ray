@@ -214,7 +214,7 @@ local Raycaster = {
 			local tile, dist = self:castRay(angle, drawDist)
 			local top, height = self:project(self.wallHeight, h, angle, dist)
 
-			for j=top,top+height do
+			for j=math.ceil(top),math.ceil(top+height) do
 				surf.setCursorPos(i, j)
 				surf.setBackgroundColour(2 ^ (tile - 1))
 				surf.write(" ")

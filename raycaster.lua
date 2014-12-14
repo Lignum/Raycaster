@@ -22,7 +22,7 @@ local Raycaster = oohelper.newClass({
 		self.cameraX = 0
 		self.cameraY = 0
 		self.cameraAngle = 0
-		self.cameraFov = 60
+		self.cameraFov = 90
 
 		for y=1,mapHeight do
 			self.tiles[y] = {}
@@ -134,9 +134,11 @@ local Raycaster = oohelper.newClass({
 			local nextTile = self:getTile(nextX, nextY)
 
 			if nextTile > 0 then --# We've hit a tile.
-				return nextTile, dist
+				return nextTile, hypot(nextX - x, nextY - y)
 			end
 		end
+
+		return 16, 0
 	end,
 
 	--# For debugging.
@@ -164,24 +166,37 @@ local Raycaster = oohelper.newClass({
 		end
 	end,
 
-	draw3D = function(self, surface, drawDist)
-		local surf = surface or term
-		local w,h = surf.getSize()
-		drawDist = drawDist or math.floor(hypot(w, h))
+	draw3D = function(self, surface)
+		local ok, err = pcall(function()
+			local surf = surface or term
+			local w,h = surf.getSize()
+			drawDist = h
 
-		for i=1,w do
-			local t = i/w
-			local angle = lerp(self.cameraAngle - self.cameraFov / 2, self.cameraAngle + self.cameraFov / 2, t)
+			for i=1,w do
+				local t = i/w
+				local angle = lerp(self.cameraAngle - self.cameraFov / 2, self.cameraAngle + self.cameraFov / 2, t)
 
-			local tile, dist = self:castRay(angle, drawDist)
-			local depth = dist * math.cos(math.rad(angle))
-			local wallHeight = h * h / depth
+				local tile, dist = self:castRay(angle, drawDist)
+				local depth = dist
+				local wallHeight = depth
 
-			for j=1,wallHeight do
-				surf.setCursorPos(i, j + h / 2 - wallHeight / 2)
-				surf.setBackgroundColour(2 ^ (tile - 1))
-				surf.write(" ")
+				if wallHeight <= h then
+					for j=1,wallHeight do
+						surf.setCursorPos(i, j + h / 2 - wallHeight / 2)
+						surf.setBackgroundColour(2 ^ (tile - 1))
+						surf.write(" ")
+						surf.setCursorPos(1, 1)
+					end
+				end
 			end
+		end)
+
+		if not ok then
+			term.setBackgroundColour(colours.black)
+			term.clear()
+			term.setCursorPos(1, 1)
+			term.setTextColour(colours.white)
+			print(err)
 		end
 	end
 })

@@ -25,5 +25,11 @@ while true do
 		Raycaster:setCameraTransform(x, y, angle - 5)
 	end
 
+	if key == keys.up then
+		Raycaster:setCameraTransform(x + math.cos(math.rad(angle)), y + math.sin(math.rad(angle)), angle)
+	elseif key == keys.down then
+		Raycaster:setCameraTransform(x - math.cos(math.rad(angle)), y - math.sin(math.rad(angle)), angle)
+	end
+
 	Raycaster:draw3D(term)
 end

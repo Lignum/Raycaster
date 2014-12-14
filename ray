@@ -157,7 +157,7 @@ local Raycaster = {
 			local nextTile = self:getTile(nextX, nextY)
 
 			if nextTile ~= nil and nextTile > 0 then --# We've hit a tile.
-				return nextTile, hypot(nextX - x, nextY - y)
+				return nextTile, hypot(nextX - self.cameraX, nextY - self.cameraY)
 			end
 		end
 
@@ -202,7 +202,7 @@ local Raycaster = {
 
 		local surf = surface or term
 		local w,h = surf.getSize()
-		drawDist = 64
+		local drawDist = 64
 
 		surf.setBackgroundColour(self.skyColour)
 		surf.clear()

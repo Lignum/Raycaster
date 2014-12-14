@@ -22,7 +22,7 @@ local Raycaster = oohelper.newClass({
 		self.cameraX = 0
 		self.cameraY = 0
 		self.cameraAngle = 0
-		self.cameraFov = 90
+		self.cameraFov = 60
 
 		for y=1,mapHeight do
 			self.tiles[y] = {}
@@ -167,10 +167,16 @@ local Raycaster = oohelper.newClass({
 	end,
 
 	draw3D = function(self, surface)
+		if self.cameraAngle > 360 then
+			self.cameraAngle = self.cameraAngle - 360
+		elseif self.cameraAngle < 0 then
+			self.cameraAngle = self.cameraAngle + 360
+		end
+
 		local ok, err = pcall(function()
 			local surf = surface or term
 			local w,h = surf.getSize()
-			drawDist = h
+			drawDist = 64
 
 			for i=1,w do
 				local t = i/w
@@ -178,9 +184,9 @@ local Raycaster = oohelper.newClass({
 
 				local tile, dist = self:castRay(angle, drawDist)
 				local depth = dist
-				local wallHeight = depth
+				local wallHeight = lerp(h, 1, depth / drawDist)
 
-				if wallHeight <= h then
+				if wallHeight <= h and wallHeight > 1 then
 					for j=1,wallHeight do
 						surf.setCursorPos(i, j + h / 2 - wallHeight / 2)
 						surf.setBackgroundColour(2 ^ (tile - 1))
